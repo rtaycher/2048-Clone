@@ -74,14 +74,15 @@ class Board {
 
     add_new_number() {
         if (this.array.filter(x => !!x).length === this.x_size * this.y_size) {
-            throw Error("board is full");
+            console.warn("board is full");
+            return;
         }
 
         let index = getRandomIntInclusive(0, this.x_size * this.y_size - 1);
-        while (this.array[index]) {
+        while (this.array[index].value) {
             index = getRandomIntInclusive(0, this.x_size * this.y_size - 1);
         }
-        this.array[index] = 2;
+        this.array[index] = {value:2, combined_this_turn:false};
 
     }
 
@@ -113,14 +114,15 @@ class Board {
             old_location_index = this.get_index(x, y);
             new_location_index = this.get_index(x, y + 1);
         }
-        let value_at_old_location = this.array[old_location_index];
-        let value_at_new_location = this.array[new_location_index];
+        let value_at_old_location = this.array[old_location_index].value;
+        let value_at_new_location = this.array[new_location_index].value;
         if (value_at_old_location === value_at_new_location) {
-            this.array[old_location_index] = null;
-            this.array[new_location_index] = value_at_old_location + value_at_new_location;
+            this.array[old_location_index].value = null;
+            this.array[new_location_index].value = value_at_old_location + value_at_new_location;
+            this.array[old_location_index]
         } else if (!value_at_new_location) {
-            this.array[old_location_index] = null;
-            this.array[new_location_index] = value_at_old_location;
+            this.array[old_location_index].value = null;
+            this.array[new_location_index].value = value_at_old_location;
         }
     }
     game_is_won() {
@@ -196,14 +198,14 @@ class Board {
             for (let x = 0; x < x_size; x++) {
                 let cell = document.createElement("div");
                 cell.className = "game-cell";
-                cell.innerHTML = (this.array[this.get_index(x, y)] || "").toString();
-                if(this.array[this.get_index(x, y)]) {
+                cell.innerHTML = (this.array[this.get_index(x, y)].value || "").toString();
+                if(this.array[this.get_index(x, y)].value) {
                     removeClass(cell, "transparent");
                 } else {
                     addClass(cell, "transparent");
                 }
                 if (this.get_index(x, y)) {
-                    cell.style.backgroundColor = colors[this.array[this.get_index(x, y)]];
+                    cell.style.backgroundColor = colors[this.array[this.get_index(x, y)].value];
                 }
                 row.appendChild(cell);
                 i++;
