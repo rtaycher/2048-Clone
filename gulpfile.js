@@ -11,7 +11,10 @@ var gulp = require('gulp'),
     tsProject = tsc.createProject('tsconfig.json'),
     browserSync = require('browser-sync'),
     superstatic = require('superstatic');
-;
+;var gulp = require('gulp');
+var ghPages = require('gulp-gh-pages');
+
+
 var config = new Config();
 
 
@@ -107,6 +110,11 @@ gulp.task('clean-ts', function (cb) {
     del(typeScriptGenFiles, cb);
 });
 
+
+gulp.task('deploy', function() {
+    return gulp.src('./dist/**/*')
+        .pipe(ghPages());
+});
 
 gulp.task('serve', ['compile-ts', 'watch'], function () {
     process.stdout.write('Starting browserSync and superstatic...\n');
