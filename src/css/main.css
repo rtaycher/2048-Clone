@@ -282,16 +282,18 @@ textarea {
 #game {
     background: #FF7F59;
     display: table;
+    margin-left: auto;
+    margin-right: auto;
+    border-radius: 10px;
 }
 
 .game-cell {
     float: left;
     display: table-cell;
-    border: solid;
-    border-radius: 22px;
     padding: 22px;
-    width: 5vw;
-    height: 5vw;
+    width: 3vw;
+    height: 3vw;
+    margin: 7px;
 }
 
 .game-row
@@ -303,6 +305,22 @@ textarea {
     background: rgba(255,255,255,.8);
 }
 
+#game-score-box {
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
+    text-align: center;
+    width: 100px;
+    color: white;
+    background-color: deepskyblue;
+}
 #NewGameButton {
-    border-radius: 5px;
+    width: 100px;
+}
+
+body {
+    background: darkseagreen;
+}
+#content {
+    text-align: center;
 }

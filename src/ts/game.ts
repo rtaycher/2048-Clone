@@ -2,6 +2,40 @@
  * Created by roma on 5/22/16.
  */
 
+interface Array<T> {
+    includes(searchElement: T) : boolean;
+}
+
+// Add Array includes polyfill if needed
+// https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/includes#Polyfill
+if (!Array.prototype.includes) {
+    Array.prototype.includes = function(searchElement /*, fromIndex*/ ) {
+        'use strict';
+        var O = Object(this);
+        var len = parseInt(O.length, 10) || 0;
+        if (len === 0) {
+            return false;
+        }
+        var n = parseInt(arguments[1], 10) || 0;
+        var k;
+        if (n >= 0) {
+            k = n;
+        } else {
+            k = len + n;
+            if (k < 0) {k = 0;}
+        }
+        var currentElement;
+        while (k < len) {
+            currentElement = O[k];
+            if (searchElement === currentElement) { // NaN !== NaN
+                return true;
+            }
+            k++;
+        }
+        return false;
+    };
+}
+
 enum Direction {
     Left,
     Right,
@@ -10,7 +44,7 @@ enum Direction {
 }
 
 function arraysEqualHack(arr1, arr2) {
-    return JSON.stringify(arr1)==JSON.stringify(arr2);
+    return JSON.stringify(arr1) == JSON.stringify(arr2);
 }
 
 function is_truthy(val) {
@@ -50,22 +84,22 @@ function removeClass(el, className) {
         el.classList.remove(className)
     else if (hasClass(el, className)) {
         var reg = new RegExp('(\\s|^)' + className + '(\\s|$)')
-        el.className=el.className.replace(reg, ' ')
+        el.className = el.className.replace(reg, ' ')
     }
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const colors = ["White", "LightGrey","DarkGrey", "Yellow", "LightSalmon","Orangered", "Gold", "Red", "LightCoral", "RoyalBlue", "Black", "Blue", "Black", "LimeGreen", "MistyRose","Brown","Purple"];
+const colors = ["White", "Yellow", "LightSalmon", "Orangered", "Gold", "Red", "LightCoral", "RoyalBlue", "Blue", "LimeGreen", "MistyRose", "Purple", "deepskyblue", "Plum", "Pink", "rebeccapurple"];
 class Board {
 
     constructor(x_size, y_size) {
         this.array = [];
         this.x_size = x_size;
         this.y_size = y_size;
-    }
-
-    get_score(): number {
-        return sum(this.array);
+        this.score = 0;
+        for (let i = 0; i < this.x_size * this.y_size; i++) {
+            this.array[i] = null;
+        }
     }
 
     get_index(x:number, y:number) {
@@ -79,14 +113,14 @@ class Board {
         }
 
         let index = getRandomIntInclusive(0, this.x_size * this.y_size - 1);
-        while (this.array[index].value) {
+        while (this.array[index]) {
             index = getRandomIntInclusive(0, this.x_size * this.y_size - 1);
         }
-        this.array[index] = {value:2, combined_this_turn:false};
+        this.array[index] = {id: get_psuedo_uuid(), value: 2};
 
     }
 
-    try_move(direction, x, y) {
+    try_move(direction:Direction, x:number , y:number, id_arr:string[]) {
         let old_location_index = 0;
         let new_location_index = 0;
         if (direction === Direction.Left) {
@@ -114,63 +148,73 @@ class Board {
             old_location_index = this.get_index(x, y);
             new_location_index = this.get_index(x, y + 1);
         }
-        let value_at_old_location = this.array[old_location_index].value;
-        let value_at_new_location = this.array[new_location_index].value;
-        if (value_at_old_location === value_at_new_location) {
-            this.array[old_location_index].value = null;
-            this.array[new_location_index].value = value_at_old_location + value_at_new_location;
-            this.array[old_location_index]
-        } else if (!value_at_new_location) {
-            this.array[old_location_index].value = null;
-            this.array[new_location_index].value = value_at_old_location;
+        let object_at_old_location = this.array[old_location_index];
+        let object_at_new_location = this.array[new_location_index];
+        let value_at_old_location = object_at_old_location && object_at_old_location.value;
+        let value_at_new_location = object_at_new_location && object_at_new_location.value;
+        if (object_at_old_location && object_at_new_location && value_at_old_location && value_at_new_location &&
+            value_at_old_location === value_at_new_location &&
+            !id_arr.includes(object_at_old_location.id) &&
+            !id_arr.includes(object_at_new_location.id)) {
+            console.log(`old_v::${value_at_old_location} new_v:${value_at_new_location}`);
+            this.array[new_location_index] = {
+                id: get_psuedo_uuid(),
+                value: value_at_old_location + value_at_new_location
+            };
+            this.array[old_location_index] = null;
+            this.score += this.array[new_location_index].value;
+            id_arr.push(this.array[new_location_index].id);
+        } else if (!object_at_new_location) {
+            this.array[old_location_index] = null;
+            this.array[new_location_index] = object_at_old_location;
         }
     }
+
     game_is_won() {
-        return this.array.some(x => x >= 2048);
+        return this.array.filter(Boolean).some(x => x.value >= 2048);
     }
+
     can_make_move() {
         let old_array = this.array.slice();
+        let old_score = this.score;
+        this.shift_board(Direction.Up);
+        this.shift_board(Direction.Down);
+        this.shift_board(Direction.Left);
+        this.shift_board(Direction.Right);
 
-        this.shift_board(Direction.Up)
-        this.shift_board(Direction.Down)
-        this.shift_board(Direction.Left)
-        this.shift_board(Direction.Right)
-        if (arraysEqualHack(this.array, old_array))
-        {
+        this.score = old_score;
+        if (arraysEqualHack(this.array, old_array)) {
             return false;
         }
         this.array = old_array;
 
         return true;
     }
-    shift_board(direction) {
 
+    shift_board(direction) {
+        let id_array = [];
         if (direction === Direction.Left) {
             for (let y = 0; y < this.y_size; y++) {
                 for (let x = this.x_size - 1; x > 0; x--) {
-                    console.info(`Left x,y: ${x} ${y}`);
-                    this.try_move(direction, x, y);
+                    this.try_move(direction, x, y, id_array);
                 }
             }
         } else if (direction === Direction.Right) {
             for (let y = 0; y < this.y_size; y++) {
                 for (let x = 0; x < this.x_size; x++) {
-                    console.info(`Right x,y: ${x} ${y}`);
-                    this.try_move(direction, x, y);
+                    this.try_move(direction, x, y, id_array);
                 }
             }
         } else if (direction === Direction.Up) {
-            for (let y = this.y_size-1; y > 0; y--) {
+            for (let y = this.y_size - 1; y > 0; y--) {
                 for (let x = 0; x < this.x_size; x++) {
-                    console.info(`Up x,y: ${x} ${y}`);
-                    this.try_move(direction, x, y);
+                    this.try_move(direction, x, y, id_array);
                 }
             }
         } else if (direction === Direction.Down) {
             for (let y = 0; y < this.y_size; y++) {
                 for (let x = 0; x < this.x_size; x++) {
-                    console.info(`Down x,y: ${x} ${y}`);
-                    this.try_move(direction, x, y);
+                    this.try_move(direction, x, y, id_array);
                 }
             }
         }
@@ -198,13 +242,18 @@ class Board {
             for (let x = 0; x < x_size; x++) {
                 let cell = document.createElement("div");
                 cell.className = "game-cell";
-                cell.innerHTML = (this.array[this.get_index(x, y)].value || "").toString();
-                if(this.array[this.get_index(x, y)].value) {
+                if (this.array[this.get_index(x, y)]) {
+                    cell.innerHTML = (this.array[this.get_index(x, y)].value || "").toString();
+                }
+                if (this.array[this.get_index(x, y)]) {
                     removeClass(cell, "transparent");
                 } else {
                     addClass(cell, "transparent");
                 }
-                if (this.get_index(x, y)) {
+                if (this.array[this.get_index(x, y)]) {
+                    if (colors[this.array[this.get_index(x, y)].value] == "White") {
+                        console.log(`x:${x}y:${y} value:${this.array[this.get_index(x, y)].value}`);
+                    }
                     cell.style.backgroundColor = colors[this.array[this.get_index(x, y)].value];
                 }
                 row.appendChild(cell);
@@ -212,8 +261,8 @@ class Board {
             }
             game.appendChild(row);
         }
-        document.getElementById("game-score").innerHTML = this.get_score().toString();
-        if (this.game_is_won() ) {
+        document.getElementById("game-score").innerHTML = this.score.toString();
+        if (this.game_is_won()) {
             if (this.can_make_move()) {
                 document.getElementById("game-status").innerHTML = "Game Won!";
             } else {
@@ -222,15 +271,16 @@ class Board {
         } else if (!this.can_make_move()) {
             document.getElementById("game-status").innerHTML = "No More moves can be made. Game Lost!";
         }
-        else{
+        else {
             document.getElementById("game-status").innerHTML = "";
         }
     }
 
-    points: number;
-    array: number[];
-    x_size: number;
-    y_size: number;
+    points:number;
+    array:ValueWithId[];
+    x_size:number;
+    y_size:number;
+    score:number;
 }
 
 function input_handling(event) {
@@ -272,6 +322,18 @@ function input_handling(event) {
 interface Window { board:any;
 }
 
+interface ValueWithId {
+    id:string;
+    value:number;
+}
+
+function get_psuedo_uuid() {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,
+        c => {
+            var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+            return v.toString(16);
+        });
+}
 // from https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/random
 // Returns a random integer between min (included) and max (included)
 // Using Math.round() will give you a non-uniform distribution!

@@ -1,6 +1,38 @@
 /**
  * Created by roma on 5/22/16.
  */
+// Add Array includes polyfill if needed
+// https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/includes#Polyfill
+if (!Array.prototype.includes) {
+    Array.prototype.includes = function (searchElement /*, fromIndex*/) {
+        'use strict';
+        var O = Object(this);
+        var len = parseInt(O.length, 10) || 0;
+        if (len === 0) {
+            return false;
+        }
+        var n = parseInt(arguments[1], 10) || 0;
+        var k;
+        if (n >= 0) {
+            k = n;
+        }
+        else {
+            k = len + n;
+            if (k < 0) {
+                k = 0;
+            }
+        }
+        var currentElement;
+        while (k < len) {
+            currentElement = O[k];
+            if (searchElement === currentElement) {
+                return true;
+            }
+            k++;
+        }
+        return false;
+    };
+}
 var Direction;
 (function (Direction) {
     Direction[Direction["Left"] = 0] = "Left";
@@ -51,30 +83,32 @@ function removeClass(el, className) {
     }
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-var colors = ["White", "LightGrey", "DarkGrey", "Yellow", "LightSalmon", "Orangered", "Gold", "Red", "LightCoral", "RoyalBlue", "Black", "Blue", "Black", "LimeGreen", "MistyRose", "Brown", "Purple"];
+var colors = ["White", "Yellow", "LightSalmon", "Orangered", "Gold", "Red", "LightCoral", "RoyalBlue", "Blue", "LimeGreen", "MistyRose", "Purple", "deepskyblue", "Plum", "Pink", "rebeccapurple"];
 var Board = (function () {
     function Board(x_size, y_size) {
         this.array = [];
         this.x_size = x_size;
         this.y_size = y_size;
+        this.score = 0;
+        for (var i = 0; i < this.x_size * this.y_size; i++) {
+            this.array[i] = null;
+        }
     }
-    Board.prototype.get_score = function () {
-        return sum(this.array);
-    };
     Board.prototype.get_index = function (x, y) {
         return (y * this.x_size) + x;
     };
     Board.prototype.add_new_number = function () {
         if (this.array.filter(function (x) { return !!x; }).length === this.x_size * this.y_size) {
-            throw Error("board is full");
+            console.warn("board is full");
+            return;
         }
         var index = getRandomIntInclusive(0, this.x_size * this.y_size - 1);
         while (this.array[index]) {
             index = getRandomIntInclusive(0, this.x_size * this.y_size - 1);
         }
-        this.array[index] = 2;
+        this.array[index] = { id: get_psuedo_uuid(), value: 2 };
     };
-    Board.prototype.try_move = function (direction, x, y) {
+    Board.prototype.try_move = function (direction, x, y, id_arr) {
         var old_location_index = 0;
         var new_location_index = 0;
         if (direction === Direction.Left) {
@@ -105,26 +139,39 @@ var Board = (function () {
             old_location_index = this.get_index(x, y);
             new_location_index = this.get_index(x, y + 1);
         }
-        var value_at_old_location = this.array[old_location_index];
-        var value_at_new_location = this.array[new_location_index];
-        if (value_at_old_location === value_at_new_location) {
+        var object_at_old_location = this.array[old_location_index];
+        var object_at_new_location = this.array[new_location_index];
+        var value_at_old_location = object_at_old_location && object_at_old_location.value;
+        var value_at_new_location = object_at_new_location && object_at_new_location.value;
+        if (object_at_old_location && object_at_new_location && value_at_old_location && value_at_new_location &&
+            value_at_old_location === value_at_new_location &&
+            !id_arr.includes(object_at_old_location.id) &&
+            !id_arr.includes(object_at_new_location.id)) {
+            console.log("old_v::" + value_at_old_location + " new_v:" + value_at_new_location);
+            this.array[new_location_index] = {
+                id: get_psuedo_uuid(),
+                value: value_at_old_location + value_at_new_location
+            };
             this.array[old_location_index] = null;
-            this.array[new_location_index] = value_at_old_location + value_at_new_location;
+            this.score += this.array[new_location_index].value;
+            id_arr.push(this.array[new_location_index].id);
         }
-        else if (!value_at_new_location) {
+        else if (!object_at_new_location) {
             this.array[old_location_index] = null;
-            this.array[new_location_index] = value_at_old_location;
+            this.array[new_location_index] = object_at_old_location;
         }
     };
     Board.prototype.game_is_won = function () {
-        return this.array.some(function (x) { return x >= 2048; });
+        return this.array.filter(Boolean).some(function (x) { return x.value >= 2048; });
     };
     Board.prototype.can_make_move = function () {
         var old_array = this.array.slice();
+        var old_score = this.score;
         this.shift_board(Direction.Up);
         this.shift_board(Direction.Down);
         this.shift_board(Direction.Left);
         this.shift_board(Direction.Right);
+        this.score = old_score;
         if (arraysEqualHack(this.array, old_array)) {
             return false;
         }
@@ -132,35 +179,32 @@ var Board = (function () {
         return true;
     };
     Board.prototype.shift_board = function (direction) {
+        var id_array = [];
         if (direction === Direction.Left) {
             for (var y = 0; y < this.y_size; y++) {
                 for (var x = this.x_size - 1; x > 0; x--) {
-                    console.info("Left x,y: " + x + " " + y);
-                    this.try_move(direction, x, y);
+                    this.try_move(direction, x, y, id_array);
                 }
             }
         }
         else if (direction === Direction.Right) {
             for (var y = 0; y < this.y_size; y++) {
                 for (var x = 0; x < this.x_size; x++) {
-                    console.info("Right x,y: " + x + " " + y);
-                    this.try_move(direction, x, y);
+                    this.try_move(direction, x, y, id_array);
                 }
             }
         }
         else if (direction === Direction.Up) {
             for (var y = this.y_size - 1; y > 0; y--) {
                 for (var x = 0; x < this.x_size; x++) {
-                    console.info("Up x,y: " + x + " " + y);
-                    this.try_move(direction, x, y);
+                    this.try_move(direction, x, y, id_array);
                 }
             }
         }
         else if (direction === Direction.Down) {
             for (var y = 0; y < this.y_size; y++) {
                 for (var x = 0; x < this.x_size; x++) {
-                    console.info("Down x,y: " + x + " " + y);
-                    this.try_move(direction, x, y);
+                    this.try_move(direction, x, y, id_array);
                 }
             }
         }
@@ -184,22 +228,27 @@ var Board = (function () {
             for (var x = 0; x < x_size; x++) {
                 var cell = document.createElement("div");
                 cell.className = "game-cell";
-                cell.innerHTML = (this.array[this.get_index(x, y)] || "").toString();
+                if (this.array[this.get_index(x, y)]) {
+                    cell.innerHTML = (this.array[this.get_index(x, y)].value || "").toString();
+                }
                 if (this.array[this.get_index(x, y)]) {
                     removeClass(cell, "transparent");
                 }
                 else {
                     addClass(cell, "transparent");
                 }
-                if (this.get_index(x, y)) {
-                    cell.style.backgroundColor = colors[this.array[this.get_index(x, y)]];
+                if (this.array[this.get_index(x, y)]) {
+                    if (colors[this.array[this.get_index(x, y)].value] == "White") {
+                        console.log("x:" + x + "y:" + y + " value:" + this.array[this.get_index(x, y)].value);
+                    }
+                    cell.style.backgroundColor = colors[this.array[this.get_index(x, y)].value];
                 }
                 row.appendChild(cell);
                 i++;
             }
             game.appendChild(row);
         }
-        document.getElementById("game-score").innerHTML = this.get_score().toString();
+        document.getElementById("game-score").innerHTML = this.score.toString();
         if (this.game_is_won()) {
             if (this.can_make_move()) {
                 document.getElementById("game-status").innerHTML = "Game Won!";
@@ -251,6 +300,12 @@ function input_handling(event) {
         }
     }
     window.board.draw();
+}
+function get_psuedo_uuid() {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+        var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+        return v.toString(16);
+    });
 }
 // from https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/random
 // Returns a random integer between min (included) and max (included)
