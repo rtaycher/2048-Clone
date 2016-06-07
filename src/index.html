@@ -13,6 +13,7 @@
         <link rel="stylesheet" href="css/normalize.css">
         <link rel="stylesheet" href="css/main.css">
         <script src="js/vendor/modernizr-2.8.3.min.js"></script>
+
     </head>
     <body>
 
@@ -22,8 +23,11 @@
         <div id="content">
             <h1>2048 Clone</h1>
             <!-- Add your site or application content here -->
-            <input id="NewGameButton" type="button" value="New Game" onclick="new_game();"><br><br>
-            <div id="game-score-box">Score: <div id="game-score"></div></div><br><br>
+            <input id="NewGameButton" type="button" value="New Game" onclick="new_game();">
+            <div id="game-score-box">Score: <div id="game-score"></div></div>
+            <div id="game-top-score-box">Top Score: <div id="game-top-score"></div></div>
+            <br><br>
+
             <div id="game-status"></div>
             <div id="game"></div>
 
@@ -31,6 +35,7 @@
             <script src="https://code.jquery.com/jquery-{{JQUERY_VERSION}}.min.js"></script>
             <script>window.jQuery || document.write('<script src="js/vendor/jquery-{{JQUERY_VERSION}}.min.js"><\/script>')</script>
             <script src="js/plugins.js"></script>
+            <script src="http://requirejs.org/docs/release/2.2.0/minified/require.js"></script>
             <script src="js/game.js"></script>
 
             <h5>"Use Arrow Keys to move, when two squares with the same number touch,

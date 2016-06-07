@@ -11,12 +11,15 @@ var gulp = require('gulp'),
     tsProject = tsc.createProject('tsconfig.json'),
     browserSync = require('browser-sync'),
     superstatic = require('superstatic');
-;var gulp = require('gulp');
-var ghPages = require('gulp-gh-pages');
 
+var gulp = require('gulp');
+var ghPages = require('gulp-gh-pages');
+var browserify = require('browserify');
+var tsify = require('tsify');
+var source = require('vinyl-source-stream');
 
 var config = new Config();
-
+var glob = require('glob');
 
 // Load all gulp plugins automatically
 // and attach them to the `plugins` object
@@ -41,10 +44,7 @@ gulp.task('archive:zip', function (done) {
 
     var archiveName = path.resolve(dirs.archive, pkg.name + '_v' + pkg.version + '.zip');
     var archiver = require('archiver')('zip');
-    var files = require('glob').sync('**/*.*', {
-        'cwd': dirs.dist,
-        'dot': true // include hidden files
-    });
+
     var output = fs.createWriteStream(archiveName);
 
     archiver.on('error', function (error) {
@@ -83,17 +83,25 @@ gulp.task('ts-lint', function () {
  */
 gulp.task('compile-ts', function () {
     var sourceTsFiles = [config.allTypeScript,                //path to typescript files
-        config.libraryTypeScriptDefinitions]; //reference to library .d.ts files
+        // config.libraryTypeScriptDefinitions]; //reference to library .d.ts files
+    ];
+    //
+    //
+    // var tsResult = gulp.src(sourceTsFiles)
+    //     .pipe(sourcemaps.init())
+    //     .pipe(tsc(tsProject));
+    //
+    // tsResult.dts.pipe(gulp.dest(config.tsOutputPath));
+    // return tsResult.js
+    //     .pipe(sourcemaps.write('.'))
+    //     .pipe(gulp.dest(config.tsOutputPath));
+    var extensions = ['.js', '.ts', '.json'];
+    var bundler = browserify({extensions: extensions})
+        .plugin(tsify).add(sourceTsFiles);
 
-
-    var tsResult = gulp.src(sourceTsFiles)
-        .pipe(sourcemaps.init())
-        .pipe(tsc(tsProject));
-
-    tsResult.dts.pipe(gulp.dest(config.tsOutputPath));
-    return tsResult.js
-        .pipe(sourcemaps.write('.'))
-        .pipe(gulp.dest(config.tsOutputPath));
+    return bundler.bundle()
+        .pipe(source(config.app.result))
+        .pipe(gulp.dest(config.publicPath));
 });
 
 /**
@@ -231,6 +239,29 @@ gulp.task('lint:js', function () {
         .pipe(plugins.jshint.reporter('fail'));
 });
 
+gulp.task('browserify-client', ['lint-client'], function() {
+    return gulp.src('client/index.js')
+        .pipe(browserify({
+            insertGlobals: true
+        }))
+        .pipe(rename('car-finder.js'))
+        .pipe(gulp.dest('build'))
+        .pipe(gulp.dest('public/javascripts'));
+});
+
+// gulp.task('browserify-test', ['lint-test'], function() {
+//     return gulp.src('test/client/index.js')
+//         .pipe(browserify({
+//             insertGlobals: true
+//         }))
+//         .pipe(rename('client-test.js'))
+//         .pipe(gulp.dest('build'));
+// });
+//
+// gulp.task('watch', function() {
+//     gulp.watch('client/**/*.js', ['browserify-client']);
+//     gulp.watch('test/client/**/*.js', ['browserify-test']);
+// });
 
 // ---------------------------------------------------------------------
 // | Main tasks                                                        |
@@ -253,5 +284,6 @@ gulp.task('build', function (done) {
         'copy',
         done);
 });
+
 
 gulp.task('default', ['build']);
