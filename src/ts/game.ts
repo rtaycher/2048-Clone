@@ -2,9 +2,9 @@
  * Created by roma on 5/22/16.
  */
 
-interface Array<T> {
-    includes(searchElement: T) : boolean;
-}
+/// <reference path="../../typings/index.d.ts"/>
+/// <reference path="../../typings/globals/js-cookie/index.d.ts"/>
+/// <reference path="../ts.d/global.d.ts"/>
 
 // Add Array includes polyfill if needed
 // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/includes#Polyfill
@@ -36,6 +36,32 @@ if (!Array.prototype.includes) {
     };
 }
 
+
+function includes(arr, searchElement /*, fromIndex*/ ) {
+    'use strict';
+    var O = Object(arr);
+    var len = parseInt(O.length, 10) || 0;
+    if (len === 0) {
+        return false;
+    }
+    var n = parseInt(arguments[1], 10) || 0;
+    var k;
+    if (n >= 0) {
+        k = n;
+    } else {
+        k = len + n;
+        if (k < 0) {k = 0;}
+    }
+    var currentElement;
+    while (k < len) {
+        currentElement = O[k];
+        if (searchElement === currentElement) { // NaN !== NaN
+            return true;
+        }
+        k++;
+    }
+    return false;
+}
 enum Direction {
     Left,
     Right,
@@ -91,12 +117,20 @@ function removeClass(el, className) {
 
 const colors = ["White", "Yellow", "LightSalmon", "Orangered", "Gold", "Red", "LightCoral", "RoyalBlue", "Blue", "LimeGreen", "MistyRose", "Purple", "deepskyblue", "Plum", "Pink", "rebeccapurple"];
 class Board {
+    points:number;
+    array:ValueWithId[];
+    x_size:number;
+    y_size:number;
+    score:number;
+    max_score:number;
 
     constructor(x_size, y_size) {
         this.array = [];
         this.x_size = x_size;
         this.y_size = y_size;
         this.score = 0;
+        this.max_score = parseInt(Cookies.get('max_score'), 10) || 0;
+
         for (let i = 0; i < this.x_size * this.y_size; i++) {
             this.array[i] = null;
         }
@@ -108,7 +142,6 @@ class Board {
 
     add_new_number() {
         if (this.array.filter(x => !!x).length === this.x_size * this.y_size) {
-            console.warn("board is full");
             return;
         }
 
@@ -120,6 +153,14 @@ class Board {
 
     }
 
+    score_update(add_to_score:number) {
+        this.max_score = parseInt(Cookies.get('max_score'), 10) || 0;
+
+        this.score += add_to_score;
+        if (this.score > this.max_score) {
+            Cookies.set('max_score', this.max_score);
+        }
+    }
     try_move(direction:Direction, x:number , y:number, id_arr:string[]) {
         let old_location_index = 0;
         let new_location_index = 0;
@@ -154,15 +195,15 @@ class Board {
         let value_at_new_location = object_at_new_location && object_at_new_location.value;
         if (object_at_old_location && object_at_new_location && value_at_old_location && value_at_new_location &&
             value_at_old_location === value_at_new_location &&
-            !id_arr.includes(object_at_old_location.id) &&
-            !id_arr.includes(object_at_new_location.id)) {
-            console.log(`old_v::${value_at_old_location} new_v:${value_at_new_location}`);
+            !includes(id_arr, object_at_old_location.id) &&
+            !includes(id_arr, object_at_new_location.id)) {
+
             this.array[new_location_index] = {
                 id: get_psuedo_uuid(),
                 value: value_at_old_location + value_at_new_location
             };
             this.array[old_location_index] = null;
-            this.score += this.array[new_location_index].value;
+            this.score_update(this.array[new_location_index].value);
             id_arr.push(this.array[new_location_index].id);
         } else if (!object_at_new_location) {
             this.array[old_location_index] = null;
@@ -251,9 +292,6 @@ class Board {
                     addClass(cell, "transparent");
                 }
                 if (this.array[this.get_index(x, y)]) {
-                    if (colors[this.array[this.get_index(x, y)].value] == "White") {
-                        console.log(`x:${x}y:${y} value:${this.array[this.get_index(x, y)].value}`);
-                    }
                     cell.style.backgroundColor = colors[this.array[this.get_index(x, y)].value];
                 }
                 row.appendChild(cell);
@@ -262,6 +300,7 @@ class Board {
             game.appendChild(row);
         }
         document.getElementById("game-score").innerHTML = this.score.toString();
+        document.getElementById("game-top-score").innerHTML = this.max_score.toString();
         if (this.game_is_won()) {
             if (this.can_make_move()) {
                 document.getElementById("game-status").innerHTML = "Game Won!";
@@ -275,52 +314,45 @@ class Board {
             document.getElementById("game-status").innerHTML = "";
         }
     }
-
-    points:number;
-    array:ValueWithId[];
-    x_size:number;
-    y_size:number;
-    score:number;
 }
 
 function input_handling(event) {
-    if (!window.board.game_won) {
+    if (!board.can_make_move()) {
         switch (event.keyCode) {
             case 72: // h
             case 65: // a
             case 37: // Left Arrow
-                window.board.shift_board(Direction.Left);
-                console.log("Left key is pressed");
-                window.board.add_new_number();
+                board.shift_board(Direction.Left);
+                console.debug("Left key is pressed");
+                board.add_new_number();
                 break;
             case 75: // k
             case 87: // w
             case 38: // Up Arrow
-                window.board.shift_board(Direction.Up);
-                console.log("Up key is pressed");
-                window.board.add_new_number();
+                board.shift_board(Direction.Up);
+                console.debug("Up key is pressed");
+                board.add_new_number();
                 break;
             case 76: // l
             case 68: // d
             case 39:  // Right Arrow
-                window.board.shift_board(Direction.Right);
-                console.log("Right key is pressed");
-                window.board.add_new_number();
+                board.shift_board(Direction.Right);
+                console.debug("Right key is pressed");
+                board.add_new_number();
                 break;
             case 74: // j
             case 83: // s
             case 40: // Down Arrow
-                window.board.shift_board(Direction.Down);
-                console.log("Down key is pressed");
-                window.board.add_new_number();
+                board.shift_board(Direction.Down);
+                console.debug("Down key is pressed");
+                board.add_new_number();
                 break;
         }
     }
-    window.board.draw();
+    board.draw();
 }
 
-interface Window { board:any;
-}
+var board : Board;
 
 interface ValueWithId {
     id:string;
@@ -345,10 +377,10 @@ function new_game() {
     let x_size = 4;
     let y_size = 4;
 
-    window.board = new Board(x_size, y_size) || {};
-    window.board.add_new_number();
-    window.board.add_new_number();
-    window.board.draw();
+    board = new Board(x_size, y_size);
+    board.add_new_number();
+    board.add_new_number();
+    board.draw();
 }
 function main() {
     document.onkeydown = input_handling;
