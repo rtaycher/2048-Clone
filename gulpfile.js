@@ -2,6 +2,7 @@ var fs = require('fs');
 var path = require('path');
 
 var gulp = require('gulp'),
+    gutil = require('gulp-util'),
     inject = require('gulp-inject'),
     tsc = require('gulp-typescript'),
     tslint = require('gulp-tslint'),
@@ -11,7 +12,8 @@ var gulp = require('gulp'),
     tsProject = tsc.createProject('tsconfig.json'),
     browserSync = require('browser-sync'),
     superstatic = require('superstatic');
-
+var reload = browserSync.reload;
+var buffer = require('vinyl-buffer');
 var gulp = require('gulp');
 var ghPages = require('gulp-gh-pages');
 var browserify = require('browserify');
@@ -83,7 +85,7 @@ gulp.task('ts-lint', function () {
  */
 gulp.task('compile-ts', function () {
     var sourceTsFiles = [config.allTypeScript,                //path to typescript files
-        // config.libraryTypeScriptDefinitions]; //reference to library .d.ts files
+        config.libraryTypeScriptDefinitions //reference to library .d.ts files
     ];
     //
     //
@@ -95,13 +97,32 @@ gulp.task('compile-ts', function () {
     // return tsResult.js
     //     .pipe(sourcemaps.write('.'))
     //     .pipe(gulp.dest(config.tsOutputPath));
-    var extensions = ['.js', '.ts', '.json'];
-    var bundler = browserify({extensions: extensions})
-        .plugin(tsify).add(sourceTsFiles);
-
+    // var extensions = ['.js', '.ts', '.json'];
+    // var typescript =require('typescript');
+    // var bundler = browserify({extensions: extensions})
+    //     .plugin(tsify, {'typescript': typescript}).add(sourceTsFiles);
+    //
+    // return bundler.bundle()
+    //     .pipe(source(config.app.result))
+    //     .pipe(gulp.dest(config.publicPath));
+    var typescript = require('typescript');
+    var files = glob.sync('./src/ts/*.ts');
+    gutil.log("files:" + files.toString());
+    var bundler = browserify({debug: true})
+        .add(files)
+        .plugin(tsify, { typescript: typescript });
     return bundler.bundle()
-        .pipe(source(config.app.result))
-        .pipe(gulp.dest(config.publicPath));
+        .on('error', function(err) {
+            gutil.log(err);
+            this.emit('end');
+        })
+        .pipe(source('app.js'))
+        .pipe(buffer())
+        .pipe(sourcemaps.init({loadMaps: true}))
+        //.pipe(uglify({ mangle: false }))
+        .pipe(sourcemaps.write('./', {includeContent: true}))
+        .pipe(gulp.dest('public/js'))
+        .pipe(reload({stream: true}));
 });
 
 /**
