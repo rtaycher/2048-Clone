@@ -19,7 +19,7 @@ var ghPages = require('gulp-gh-pages');
 var browserify = require('browserify');
 var tsify = require('tsify');
 var source = require('vinyl-source-stream');
-
+var uglify = require('gulp-uglify');
 var config = new Config();
 var glob = require('glob');
 
@@ -84,9 +84,9 @@ gulp.task('ts-lint', function () {
  * Compile TypeScript and include references to library and app .d.ts files.
  */
 gulp.task('compile-ts', function () {
-    var sourceTsFiles = [config.allTypeScript,                //path to typescript files
-        config.libraryTypeScriptDefinitions //reference to library .d.ts files
-    ];
+    // var sourceTsFiles = [config.allTypeScript,                //path to typescript files
+    //     config.libraryTypeScriptDefinitions //reference to library .d.ts files
+    // ];
     //
     //
     // var tsResult = gulp.src(sourceTsFiles)
@@ -106,23 +106,38 @@ gulp.task('compile-ts', function () {
     //     .pipe(source(config.app.result))
     //     .pipe(gulp.dest(config.publicPath));
     var typescript = require('typescript');
-    var files = glob.sync('./src/ts/*.ts');
-    gutil.log("files:" + files.toString());
-    var bundler = browserify({debug: true})
-        .add(files)
-        .plugin(tsify, { typescript: typescript });
-    return bundler.bundle()
-        .on('error', function(err) {
-            gutil.log(err);
-            this.emit('end');
-        })
-        .pipe(source('app.js'))
-        .pipe(buffer())
-        .pipe(sourcemaps.init({loadMaps: true}))
-        //.pipe(uglify({ mangle: false }))
-        .pipe(sourcemaps.write('./', {includeContent: true}))
-        .pipe(gulp.dest('public/js'))
-        .pipe(reload({stream: true}));
+    // var files = gulp.src('./src/ts/*.ts');
+    // gutil.log("files: " + files.toString);
+    // var bundler = browserify({entries: ['./src/ts/game.ts'],  debug : true})
+    //     .plugin(tsify);
+    //
+    // return bundler.bundle()
+    //     .pipe(source('game.js'))
+    //     .pipe(gulp.dest('./dist/js'));
+    browserify()
+        .add('./src/ts/game.ts')
+        .plugin(tsify
+            // , { noImplicitAny: true }
+        )
+        .bundle()
+        .on('error', function (error) { console.error(error.toString()); })
+        .pipe(gulp.dest('./dist/js/game.js'));
+    // var bundler = browserify({entries: ['./src/ts/game.ts'],  debug : true})
+    //     .plugin(tsify, { typescript: typescript });
+    // return bundler.bundle()
+    //     .on('error', function(err) {
+    //         gutil.log(err);
+    //         this.emit('end');
+    //     })
+    //     // .pipe(buffer())
+    //     // .pipe(sourcemaps.init())
+    //     // .pipe(sourcemaps.init({loadMaps: true}))
+    //     // .pipe(uglify())
+    //     // .pipe(uglify({ mangle: false }))
+    //     // .pipe(sourcemaps.write('./', {includeContent: true}))
+    //     .pipe(gulp.dest('./dist/js'));
+    //     // .pipe(reload({stream: true}))
+        // ;
 });
 
 /**
@@ -232,7 +247,8 @@ gulp.task('copy:misc', function () {
         dirs.src + '/**/*',
 
         // Exclude the following files
-        // (other tasks will handle the copying of these files)
+        // (other tasks will handle the copying of some of these files)
+        '!' +  dirs.src + "ts.**/*",
         '!' + dirs.src + '/css/main.css',
         '!' + dirs.src + '/index.html'
 

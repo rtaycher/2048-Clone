@@ -5,11 +5,13 @@
 /// <reference path="../../typings/index.d.ts"/>
 /// <reference path="../../typings/globals/js-cookie/index.d.ts"/>
 /// <reference path="../ts.d/global.d.ts"/>
+import * as Cookies from "js-cookie";
+
 
 // Add Array includes polyfill if needed
 // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/includes#Polyfill
 if (!Array.prototype.includes) {
-    Array.prototype.includes = function(searchElement /*, fromIndex*/ ) {
+    Array.prototype.includes = function<T>(searchElement: T /*, fromIndex*/ ) {
         'use strict';
         var O = Object(this);
         var len = parseInt(O.length, 10) || 0;
@@ -17,14 +19,14 @@ if (!Array.prototype.includes) {
             return false;
         }
         var n = parseInt(arguments[1], 10) || 0;
-        var k;
+        var k:number;
         if (n >= 0) {
             k = n;
         } else {
             k = len + n;
             if (k < 0) {k = 0;}
         }
-        var currentElement;
+        var currentElement: T;
         while (k < len) {
             currentElement = O[k];
             if (searchElement === currentElement) { // NaN !== NaN
@@ -37,22 +39,22 @@ if (!Array.prototype.includes) {
 }
 
 
-function includes(arr, searchElement /*, fromIndex*/ ) {
+function includes<T>(arr:Array<T>, searchElement:T /*, fromIndex*/ ) {
     'use strict';
     var O = Object(arr);
     var len = parseInt(O.length, 10) || 0;
     if (len === 0) {
         return false;
     }
-    var n = parseInt(arguments[1], 10) || 0;
-    var k;
+    var n :number = parseInt(arguments[1], 10) || 0;
+    var k: number;
     if (n >= 0) {
         k = n;
     } else {
         k = len + n;
         if (k < 0) {k = 0;}
     }
-    var currentElement;
+    var currentElement:T;
     while (k < len) {
         currentElement = O[k];
         if (searchElement === currentElement) { // NaN !== NaN
@@ -69,11 +71,11 @@ enum Direction {
     Down
 }
 
-function arraysEqualHack(arr1, arr2) {
+function arraysEqualHack<T>(arr1: Array<T>, arr2: Array<T>) {
     return JSON.stringify(arr1) == JSON.stringify(arr2);
 }
 
-function is_truthy(val) {
+function is_truthy(val: any) {
     if (val) {
         return true;
     } else {
@@ -81,7 +83,7 @@ function is_truthy(val) {
     }
 }
 
-function sum(array) {
+function sum<T>(array: Array<T>) {
     return array.reduce((acc, x) => {
         if (x) {
             return x + acc
